@@ -1,0 +1,703 @@
+---
+title: "403A Project 2"
+author: "Ziwen Gu"
+date: "2017/11/3"
+output: pdf_document
+---
+
+
+
+#Problem 1
+• Using what you have learned about correlations and covariances, identify 10 different stocks to include in your portfolio by computing the variance-covariance matrix of the returns of your stocks. Try to include different sectors in order to further gain from diversification.
+
+##(a)
+Firstly, I downloaded the data of stock prices from "YahooFinance" and used the "monthlyreturn" function to calculate the monthly return of stocks. 
+
+After numerious trials in R, we believe the ten companies below is the best portfolio for us. 
+
+The R code is as follows:
+```{r}
+library("quantmod")
+startdate <- as.Date("2015-11-07")
+enddate<- as.Date("2017-11-07")
+getSymbols("GOOG", src = "yahoo", from = startdate, to = enddate)
+google<- monthlyReturn(GOOG,subset=NULL,type='arithmetic',leading=TRUE)
+google<- as.numeric(google)
+getSymbols("NFLX", src = "yahoo", from = startdate, to = enddate)
+Netflix<- monthlyReturn(NFLX,subset=NULL,type='arithmetic',leading=TRUE)
+Netflix<- as.numeric(Netflix)
+getSymbols("UNH", src = "yahoo", from = startdate, to = enddate)
+unitedhealth<- monthlyReturn(UNH,subset=NULL,type='arithmetic',leading=TRUE)
+unitedhealth<- as.numeric(unitedhealth)
+getSymbols("NVDA", src = "yahoo", from = startdate, to = enddate)
+Nvidia<- monthlyReturn(NVDA,subset=NULL,type='arithmetic',leading=TRUE)
+Nvidia<- as.numeric(Nvidia)
+getSymbols("GE", src = "yahoo", from = startdate, to = enddate)
+GeneralEle<-monthlyReturn(GE,subset=NULL,type='arithmetic',leading=TRUE)
+GeneralEle<- as.numeric(GeneralEle)
+getSymbols("SBUX", src = "yahoo", from = startdate, to = enddate)
+starbucks<-monthlyReturn(SBUX,subset=NULL,type='arithmetic',leading=TRUE)
+starbucks<- as.numeric(starbucks)
+getSymbols("ELLI", src = "yahoo", from = startdate, to = enddate)
+elli<-monthlyReturn(ELLI,subset=NULL,type='arithmetic',leading=TRUE)
+elli<- as.numeric(elli)
+getSymbols("AWK", src = "yahoo", from = startdate, to = enddate)
+americawaters<-monthlyReturn(AWK,subset=NULL,type='arithmetic',leading=TRUE)
+americawaters<- as.numeric(americawaters)
+getSymbols("EW", src = "yahoo", from = startdate, to = enddate)
+edwlifescience<-monthlyReturn(EW,subset=NULL,type='arithmetic',leading=TRUE)
+edwlifescience<- as.numeric(edwlifescience)
+getSymbols("COR", src = "yahoo", from = startdate, to = enddate)
+coresite<- monthlyReturn(COR,subset=NULL,type='arithmetic',leading=TRUE)
+coresite<- as.numeric(coresite)
+combinearraies<-data.frame(google,Netflix,unitedhealth,Nvidia,GeneralEle,starbucks,elli,americawaters,edwlifescience,coresite)
+cov(combinearraies)
+cov2cor(cov(combinearraies))
+```
+
+As we can see from the above, it is the Variance-Covariance Matrix for 10 companies.Also, we use the function of "Cov2Cor" to convert a Covariance Matrix into a Corrleation Matrix. 
+
+By definition,correlation means the degree to which two things behave in the same way. So to make a great portfolio, we prefer the stocks with small correlations between each other so that the 
+risk could be reduced between different stocks across differnt industries.According to the matrix of variance and corrleation above, we can see that among ten companies, the correlation efficient is really small and it also contains some negative numbers inside, which means two stocks behave in two different directions. 
+
+
+##(b)
+
+Firstly,I pull out data of daily frequencies of from January 5, 2015 to October 21,2016. I need to calculate the the expected returns and volatilities  at first.
+```{r}
+library(tseries)
+library(quantmod)
+library(PerformanceAnalytics)
+library(zoo)
+getSymbols(c("GOOG", "AWK", "NFLX", "ELLI", "NVDA", "UNH","SBUX","GE","COR","EW"),from="2015-1-5", to="2016-10-22")
+prices.data<- merge.zoo(GOOG[,6],AWK[,6],NFLX[,6],ELLI[,6],NVDA[,6],UNH[,6],SBUX[,6],GE[,6],COR[,6],EW[,6])
+returns.data <- CalculateReturns(prices.data)
+returns.data <- na.omit(returns.data)
+head(returns.data)
+colnames(returns.data) <- c("GOOG", "AWK", "NFLX", "ELLI", "NVDA", "UNH","SBUX","GE","COR","EW")
+head(returns.data)
+meanReturns <- colMeans(returns.data)
+sd=apply(returns.data,2,"sd")
+plot(sd,meanReturns,ylab="expected returns",xlab 
+="volatilities")
+```
+
+As we can see from the results above, the points in the volatilities-expected returns plot are generally subejct to the rule:high-risk-high-returns and low-risk-low-returns
+
+(c)
+```{r}
+stockModel <- function (stockReturns, drop = NULL, Rf = 0, shortSelling = c("y", 
+                                                                            "n"), model = c("none", "SIM", "CCM", "MGM"), industry = NULL, 
+                        index = NULL, get = c("overlapOnly", "all"), freq = c("month", 
+                                                                              "week", "day"), start = "1970-01-01", end = NULL, recentLast = FALSE, 
+                        rawStockPrices = FALSE) 
+{
+  if (!is.vector(stockReturns) & !is.factor(stockReturns) & 
+      !is.matrix(stockReturns) & !(class(stockReturns) %in% 
+                                   c("stockReturns", "stockModel"))) {
+    stop("The \"stockReturns\" variable is not recognized.")
+  }
+  tM <- list()
+  class(tM) <- "stockModel"
+  tM$model <- model[1]
+  if (is.numeric(tM$model)) {
+    tM$model <- c("none", "SIM", "CCM", "MGM", "MIM")[tM$model]
+  }
+  tM$ticker <- NA
+  tM$index <- ifelse(is.null(index), NA, index)
+  tM$theIndex <- NA
+  tM$industry <- NA
+  if (!is.null(industry)[1]) {
+    tM$industry <- as.character(industry)
+  }
+  tM$returns <- NA
+  tM$marketReturns <- NA
+  tM$n <- NA
+  tM$start <- NA
+  tM$end <- NA
+  tM$period <- NA
+  tM$R <- NA
+  tM$COV <- NA
+  tM$sigma <- NA
+  temp <- c("y", "yes", "Y", "Yes", "YES", TRUE)
+  tM$shorts <- ifelse(shortSelling[1] %in% temp, TRUE, FALSE)
+  tM$Rf <- Rf
+  tM$alpha <- NA
+  tM$vAlpha <- NA
+  tM$beta <- NA
+  tM$vBeta <- NA
+  tM$betaAdj <- FALSE
+  tM$MSE <- NA
+  tM$RM <- NA
+  tM$VM <- NA
+  tM$rho <- NA
+  if (model[1] == "SIM") {
+    if (is.null(index)[1]) {
+      stop("Variable \"index\" is required for the single index model.")
+    }
+    index <- index[1]
+  }
+  else if (tM$model == "MGM") {
+    if (is.null(tM$industry)[1]) {
+      stop("Variable \"industry\" is required for the multigroup model.")
+    }
+  }
+  else if (tM$model == "none" & !tM$shorts) {
+    warning("Short sales are always permitted when no model is specified.")
+    tM$shorts <- TRUE
+  }
+  if (is.vector(stockReturns) | is.factor(stockReturns)) {
+    if (!is.character(stockReturns) & !is.factor(stockReturns)) {
+      stop("Variable \"stockReturns\" not recognized.")
+    }
+    stockReturns <- getReturns(stockReturns, freq, get, start, 
+                               end)
+    temp <- stockModel(stockReturns, drop = drop, Rf = Rf, 
+                       shortSelling = shortSelling, model = model, index = index, 
+                       industry = industry)
+    return(temp)
+  }
+  else if (is.matrix(stockReturns)) {
+    n <- dim(stockReturns)[1]
+    if (recentLast) {
+      stockReturns <- stockReturns[n:1, ]
+    }
+    if (rawStockPrices) {
+      rn <- rownames(stockReturns)[1:(n - 1)]
+      temp <- stockReturns[-n, ] - stockReturns[-1, ]
+      stockReturns <- temp/stockReturns[-1, ]
+      rownames(stockReturns) <- rn
+    }
+    rn <- rownames(stockReturns)
+    cn <- colnames(stockReturns)
+    start <- ifelse(is.null(rn[1]), start, rn[1])
+    end <- ifelse(is.null(end), rev(rn)[1], end)
+    period <- freq[1]
+    if (is.null(cn)[1]) {
+      Ticker <- NA
+    }
+    else {
+      Ticker <- cn
+    }
+    stockReturns <- list(R = stockReturns, ticker = Ticker, 
+                         period = period, start = start, end = end)
+    class(stockReturns) <- "stockReturns"
+  }
+  else if (class(stockReturns) == "stockModel") {
+    stockR <- list()
+    stockR$R <- stockReturns$returns
+    stockR$ticker <- stockReturns$ticker
+    stockR$period <- stockReturns$period
+    stockR$start <- stockReturns$start
+    stockR$end <- stockReturns$end
+    stockReturns <- stockR
+    class(stockReturns) <- "stockReturns"
+  }
+  sR <- stockReturns
+  tM$ticker <- sR$ticker
+  tM$returns <- sR$R
+  tM$start <- sR$start
+  tM$end <- sR$end
+  tM$period <- sR$period
+  if (!is.null(drop)[1]) {
+    if (length(tM$ticker) == length(industry)) {
+      tM$industry <- tM$industry[-drop]
+    }
+    if (length(tM$ticker) == dim(tM$returns)[2]) {
+      tM$returns <- tM$returns[, -drop]
+    }
+    tM$ticker <- tM$ticker[-drop]
+  }
+  tM$R <- apply(tM$returns, 2, mean)
+  tM$COV <- cov(tM$returns)
+  tM$n <- dim(tM$returns)[1]
+  tM$sigma <- sqrt(diag(tM$COV))
+  if (!is.na(tM$index)) {
+    tM$marketReturns <- as.matrix(tM$returns[, index], ncol = 1)
+    colnames(tM$marketReturns) <- tM$ticker[index]
+  }
+  if (tM$model == "SIM") {
+    tM$theIndex <- tM$ticker[index]
+    tM$ticker <- tM$ticker[-index]
+    tM$industry <- tM$industry[-index]
+    tM$sigma <- tM$sigma[-index]
+    getRegCoef <- function(R, COV, index, n) {
+      RM <- R[index]
+      VM <- diag(COV)[index]
+      beta <- COV[index, -index]/VM
+      alpha <- R[-index] - beta * RM
+      MSE <- (n - 1) * (diag(COV)[-index] - beta^2 * VM)/(n - 
+                                                            2)
+      VBeta <- MSE/(n * VM)
+      VAlpha <- MSE * rep((RM^2 + VM)/(n * VM), length(VBeta))
+      R <- R[-index]
+      COV <- matrix(VM, length(R), length(R))
+      COV <- t(COV * beta) * beta
+      diag(COV) <- diag(COV) + MSE
+      return(list(R = R, COV = COV, RM = RM, VM = VM, alpha = alpha, 
+                  vAlpha = VAlpha, beta = beta, vBeta = VBeta, 
+                  MSE = MSE))
+    }
+    grc <- getRegCoef(tM$R, tM$COV, tM$index, tM$n)
+    tM$returns <- tM$returns[, -index]
+    tM$R <- grc$R
+    tM$COV <- grc$COV
+    tM$RM <- grc$RM
+    tM$VM <- grc$VM
+    tM$alpha <- grc$alpha
+    tM$beta <- grc$beta
+    tM$vAlpha <- grc$vAlpha
+    tM$vBeta <- grc$vBeta
+    tM$MSE <- grc$MSE
+  }
+  if (tM$model == "CCM") {
+    tM$rho <- getCorr(tM$COV)
+    tM$COV[, ] <- tM$rho
+    diag(tM$COV) <- 1
+    tM$COV <- t(t(tM$COV * tM$sigma) * tM$sigma)
+  }
+  if (tM$model == "MGM" && tM$shorts) {
+    tM$rho <- getCorr(tM$COV, tM$industry)
+    theMatch <- match(tM$industry, unique(tM$industry))
+    tM$COV <- tM$rho[theMatch, theMatch]
+    diag(tM$COV) <- 1
+    tM$COV <- t(t(tM$COV * tM$sigma) * tM$sigma)
+    colnames(tM$COV) <- tM$ticker
+    rownames(tM$COV) <- tM$ticker
+  }
+  else if (tM$model == "MGM") {
+  }
+  return(tM)
+}
+
+
+optimalPort <- function (model, Rf = NULL, shortSell = NULL, eps = 10^(-4)) 
+{
+  if (!is.null(Rf)) {
+    model$Rf <- Rf
+  }
+  if (!is.null(shortSell)) {
+    model$shorts <- ifelse(shortSell[1] %in% c("y", "yes", 
+                                               "Y", "Yes", "YES", TRUE), TRUE, FALSE)
+  }
+  if (!model$shorts & model$model == "none") {
+    warning("Short sales are always permitted when no model is specified.")
+    model$shorts <- TRUE
+  }
+  if (model$Rf > -100) {
+    temp <- optimalPort(model, Rf = -101, eps = eps)
+    if (model$Rf >= temp$R - eps) {
+      errMess <- paste("Rf must be less than", round(temp$R - 
+                                                       0.005, 4))
+      errMess <- paste(errMess, "\nRf may not be valid for this stock model.", 
+                       "\nNote that this message does indicate NOT a bug.", 
+                       "\nSee the optimalPort help file for more info.")
+      stop(errMess)
+    }
+  }
+  op <- list()
+  class(op) <- "optimalPortfolio"
+  op$model <- model
+  op$X <- NA
+  op$R <- NA
+  op$risk <- NA
+  if (model$model == "none") {
+    optimalPortUt <- function(model) {
+      R <- model$R - model$Rf
+      Z <- solve(model$COV) %*% R
+      X <- as.numeric(Z/sum(Z))
+      names(X) <- rownames(Z)
+      ps <- portReturn(list(R = model$R, COV = model$COV), 
+                       X)
+      return(list(X = X, R = ps$R, VAR = ps$VAR))
+    }
+    minRiskPortUt <- function(model) {
+      if (length(model$R) > 2) {
+        MRPM <- minRiskPortMultiUt(model)
+        return(MRPM)
+      }
+      temp <- as.numeric(t(c(1, -1)) %*% model$COV %*% 
+                           c(1, -1))
+      X <- model$COV[2:1, ] %*% c(1, -1) * c(-1, 1)/temp
+      port <- portReturn(model, X)
+      R <- sum(X * model$R)
+      V <- as.numeric(t(X) %*% model$COV %*% X)
+      return(list(X = X, R = port$R, VAR = V))
+    }
+    minRiskPortMultiUt <- function(model, curveInfo = FALSE) {
+      maxRf <- optimalPortUt(model, -1000)$R
+      Rf <- maxRf - 0.001 * (1:2)
+      G1 <- optimalPortUt(model, Rf[1])
+      G2 <- optimalPortUt(model, Rf[2])
+      R. <- c(G1$R, G2$R)
+      V. <- matrix(NA, 2, 2)
+      V.[1, 1] <- G1$VAR
+      V.[2, 2] <- G2$VAR
+      V.[2, 1] <- V.[1, 2] <- as.numeric(t(G1$X) %*% model$COV %*% 
+                                           G2$X)
+      MRP <- minRiskPortUt(list(R = R., COV = V.))
+      X <- G1$X * MRP$X[1] + G2$X * MRP$X[2]
+      if (!curveInfo) {
+        return(list(R = MRP$R, VAR = MRP$VAR, X = X))
+      }
+      else {
+        return(list(R = MRP$R, VAR = MRP$VAR, X = X, 
+                    G1 = G1))
+      }
+    }
+    OP <- optimalPortUt(model)
+    op$X <- OP$X
+    op$R <- OP$R
+    op$risk <- sqrt(OP$VAR)
+  }
+  else if (model$model == "SIM") {
+    ratio <- (model$R - model$Rf)/model$beta
+    o <- order(-ratio)
+    alpha <- model$alpha[o]
+    beta <- model$beta[o]
+    R <- model$R[o]
+    MSE <- model$MSE[o]
+    ratio <- ratio[o]
+    c1 <- (R - model$Rf) * beta/MSE
+    c2 <- cumsum(c1)
+    c3 <- beta^2/MSE
+    c4 <- cumsum(c3)
+    Ci <- model$VM * c2/(1 + model$VM * c4)
+    cStar <- ifelse(model$shorts, rev(Ci)[1], max(Ci))
+    z <- (beta/MSE) * (ratio - cStar)
+    t <- ifelse(model$shorts, length(Ci), which.max(Ci)[1])
+    X <- z[1:t]/sum(z[1:t])
+    temp <- list(R = R[1:t], COV = model$COV[o[1:t], o[1:t]])
+    ps <- portReturn(temp, X)
+    VAR <- sum(beta[1:t] * X)^2 * model$VM + sum(MSE[1:t] * 
+                                                   X^2)
+    X <- X[match(model$ticker, names(X))]
+    names(X) <- model$ticker
+    X[is.na(X)] <- 0
+    op$X <- X
+    op$R <- ps$R
+    op$risk <- sqrt(ps$VAR)
+  }
+  else if (model$model == "CCM") {
+    ratio <- (model$R - model$Rf)/model$sigma
+    o <- order(-ratio)
+    ratio <- ratio[o]
+    R <- model$R[o]
+    rhoRatio <- model$rho/(1 + (1:length(model$R) - 1) * 
+                             model$rho)
+    ratioSum <- cumsum(ratio)
+    Ci <- rhoRatio * ratioSum
+    cStar <- ifelse(model$shorts, rev(Ci)[1], max(Ci))
+    z <- (ratio - cStar)/((1 - model$rho) * model$sigma[o])
+    t <- ifelse(model$shorts, length(Ci), which.max(Ci)[1])
+    X <- z[1:t]/sum(z[1:t])
+    temp <- list(R = R[1:t], COV = model$COV[o[1:t], o[1:t]])
+    ps <- portReturn(temp, X)
+    X <- X[match(model$ticker, names(X))]
+    names(X) <- model$ticker
+    X[is.na(X)] <- 0
+    op$X <- X
+    op$R <- ps$R
+    op$risk <- sqrt(ps$VAR)
+  }
+  else if (model$model == "MGM" && model$shorts) {
+    ind <- model$industry
+    indU <- unique(model$industry)
+    N <- rep(NA, length(indU))
+    for (i in 1:length(indU)) {
+      N[i] <- sum(ind == indU[i])
+    }
+    I3 <- diag(rep(1, length(indU)))
+    A <- I3 + model$rho * N/(1 - diag(model$rho))
+    temp <- diag(model$rho) == 1
+    A[temp] <- (1 + model$rho * N/(1 - diag(model$rho)))[temp]
+    C <- rep(NA, length(indU))
+    ratio <- (model$R - model$Rf)/model$sigma
+    for (i in 1:length(indU)) {
+      theI <- (ind == indU[i])
+      C[i] <- sum(ratio[theI]/(1 - model$rho[i, i]))
+      if (model$rho[i, i] == 1) {
+        C[i] <- sum(ratio[theI])
+      }
+    }
+    PHI <- as.numeric(solve(A) %*% C)
+    names(PHI) <- indU
+    z <- rep(NA, length(ind))
+    for (i in 1:length(ind)) {
+      k <- which(indU == ind[i])
+      cStar <- sum(model$rho[k, ] * PHI)
+      den <- model$sigma[i] * (1 - model$rho[k, k])
+      if (model$rho[k, k] == 1) {
+        den <- model$sigma[i]
+      }
+      z[i] <- (ratio[i] - cStar)/den
+    }
+    X <- z/sum(z)
+    names(X) <- names(model$R)
+    ps <- portReturn(model, X)
+    op$X <- X
+    op$R <- ps$R
+    op$risk <- sqrt(ps$VAR)
+  }
+  else if (model$model == "MGM") {
+  }
+  return(op)
+}
+
+
+portPossCurve <- function (model, riskRange = 2, detail = 100, effFrontier = FALSE, 
+                           add = FALSE, type = "l", xlab = "Risk", ylab = "Expected Return", 
+                           doNotPlot = FALSE, ...) 
+{
+  if (!model$shorts) {
+    stop("Short selling must be permitted.\n")
+  }
+  if (!model$shorts & model$model %in% "none") {
+    model$shorts <- TRUE
+    warning("Short sales are always allowed when no model is provided.\n")
+  }
+  G1 <- optimalPort(model, Rf = -1000)
+  G2 <- optimalPort(model, Rf = G1$R - 0.01)
+  g1X <- G1$X[match(names(model$R), names(G1$X))]
+  g2X <- G2$X[match(names(model$R), names(G2$X))]
+  R <- c(G1$R, G2$R)
+  COV <- diag(c(G1$risk^2, G2$risk^2))
+  COV[1, 2] <- as.numeric(t(g1X) %*% model$COV %*% g2X)
+  COV[2, 1] <- COV[1, 2]
+  meetRRF <- function(R, COV, X, detail, minRisk, RRF) {
+    x <- X
+    X <- seq(X[1], X[2], length.out = detail)
+    r <- X * R[1] + (1 - X) * R[2]
+    v <- X^2 * COV[1, 1] + (1 - X)^2 * COV[2, 2] + 2 * X * 
+      (1 - X) * COV[1, 2]
+    trim <- TRUE
+    if (sqrt(v[1]) < RRF * minRisk) {
+      x[1] <- 2 * x[1]
+      trim <- FALSE
+    }
+    if (sqrt(rev(v)[1]) < RRF * minRisk) {
+      x[2] <- 2 * x[2]
+      trim <- FALSE
+    }
+    if (trim) {
+      these <- sqrt(v) < RRF * minRisk
+      if (sum(these) > detail/2) {
+        out <- list()
+        out$X <- X[these]
+        out$R <- r[these]
+        out$V <- v[these]
+      }
+      else {
+        x[1] <- (x[1] - 1) * 0.75 + 1
+        x[2] <- (x[2] - 1) * 0.75 + 1
+        out <- meetRRF(R, COV, X = x, detail = detail, 
+                       minRisk = minRisk, RRF = RRF)
+      }
+    }
+    else {
+      out <- meetRRF(R, COV, X = x, detail = detail, minRisk = minRisk, 
+                     RRF = RRF)
+    }
+    return(list(R = out$R, V = out$V, X = out$X))
+  }
+  mRRF <- meetRRF(R, COV, X = c(-3, 5), detail = detail, minRisk = G1$risk, 
+                  RRF = riskRange)
+  if (effFrontier) {
+    these <- which(diff(mRRF$V) < 0)
+    mRRF$R <- mRRF$R[these]
+    mRRF$V <- mRRF$V[these]
+    mRRF$X <- mRRF$X[these]
+  }
+  ports <- mRRF$X %*% t(g1X) + (1 - mRRF$X) %*% t(g2X)
+  toReturn <- list(R = mRRF$R, risk = sqrt(mRRF$V), ports = ports)
+  if (add & !doNotPlot) {
+    lines(toReturn$risk, toReturn$R, type = type, ...)
+  }
+  else if (!doNotPlot) {
+    plot(toReturn$risk, toReturn$R, type = type, xlab = xlab, 
+         ylab = ylab, ...)
+  }
+  invisible(toReturn)
+}
+
+portCloud <- function (model, riskRange = 2, detail = 25, N = 3000, add = TRUE, 
+                       col = c("#55550044"), pch = 20, subSamp = 1000, xlim = "default", 
+                       ylim = "default", xlab = "Risk", ylab = "Return", ...) 
+{
+  if (!model$shorts) {
+    stop("Short selling must be permitted.\n")
+  }
+  n <- length(model$R)
+  ppc <- portPossCurve(model, riskRange = riskRange, detail = detail, 
+                       doNotPlot = TRUE)
+  PPP <- ceiling(N/n/dim(ppc$ports)[1])
+  N <- n * PPP * dim(ppc$ports)[1]
+  if (subSamp > N) {
+    subSamp <- N
+  }
+  subSamp <- min(c(subSamp, N))
+  ports <- ppc$ports
+  portMat <- matrix(NA, subSamp, 2)
+  steps <- seq(1/(PPP + 1), 1 - 1/(PPP + 1), length.out = PPP)
+  x <- matrix(NA, subSamp, n)
+  r <- c()
+  v <- c()
+  m <- 0
+  M <- 0
+  if (subSamp == N) {
+    subSamp <- 1:N
+  }
+  else {
+    subSamp <- sample(N, subSamp)
+  }
+  for (i in 1:n) {
+    for (l in 1:dim(ppc$ports)[1]) {
+      for (j in 1:PPP) {
+        M <- M + 1
+        if (M %in% subSamp) {
+          m <- m + 1
+          u <- c(rep(0, i - 1), 1 - steps[j], rep(0, 
+                                                  n - i))
+          x[m, ] <- steps[j] * ports[l, ] + u
+          r[m] <- sum(model$R * x[m, ])
+          v[m] <- as.numeric(t(x[m, ]) %*% model$COV %*% 
+                               x[m, ])
+          portMat[m, 2] <- r[m]
+          portMat[m, 1] <- sqrt(v[m])
+        }
+      }
+    }
+  }
+  if (add) {
+    points(portMat, col = col, pch = pch, ...)
+  }
+  else {
+    if (xlim[1] == "default") {
+      xMin <- min(portMat[, 1])
+      xlim <- c(xMin, riskRange * xMin)
+      if (ylim[1] == "default") {
+        ylim <- range(portMat[portMat[, 1] < xlim[2], 
+                              2])
+        ylim <- ylim + c(-1, 1) * diff(ylim)/20
+      }
+    }
+    else if (ylim[1] == "default") {
+      ylim <- range(portMat[, 2])
+    }
+    plot(portMat, col = col, pch = pch, xlim = xlim, ylim = ylim, 
+         xlab = xlab, ylab = ylab, ...)
+  }
+  invisible(list(ports = x, R = r, risk = sqrt(v)))
+}
+
+
+portReturn <- function (model, X) 
+{
+  if (is.null(names(model$R)) | is.null(names(X))) {
+    R <- sum(model$R * X)
+    V <- as.numeric(t(X) %*% model$COV %*% X)
+  }
+  else {
+    these <- match(names(X), names(model$R))
+    R <- sum(model$R[these] * X)
+    V <- as.numeric(t(X) %*% model$COV[these, these] %*% 
+                      X)
+  }
+  portSum <- list(R = R, VAR = V, X = X, ticker = model$ticker, 
+                  model = model)
+  class(portSum) <- "portReturn"
+  return(portSum)
+}
+
+##########sjy######
+
+stocksname <- c("GE", "SBUX", "NVDA", "ELLI", "NFLX", "AWK", "EW", 
+                "COR", "GOOG", "UNH")
+mydata <- get.hist.quote(stocksname[1], start = "2015-01-05", end = "2016-10-21", quote = "AdjClose", compression = "d")
+for(i in 2:length(stocksname)){
+  mystocks <- get.hist.quote(stocksname[i], start = "2015-01-05", end = "2016-10-21", quote = "AdjClose", compression = "d"); mystocks <- na.approx(mystocks)
+  mydata <- cbind.data.frame(mydata,mystocks)
+}
+colnames(mydata) <- stocksname # keep stock names
+mydata.returns <- apply(mydata, 2, Delt)[-1,]
+rownames(mydata.returns) <- rownames(mydata)[-1]
+mmm1 <- stockModel(mydata.returns, model="none", Rf=-0.0049)
+
+
+quartz() 
+(all.these.stupid.stocks <- portPossCurve(mmm1, effFrontier = TRUE, xlim=c(0,0.05), ylim=c(-0.002,0.005), col = "darkred"))
+
+#Add a cloud of many portfolios:
+portCloud(mmm1, add=TRUE)
+
+standard.dev <- sd
+e.r.data <- meanReturns
+
+#Add the five stocks plus the point of tangency:
+points(standard.dev, e.r.data, pch=17, col = "yellow")
+points(standard.dev, e.r.data, pch=17, col="yellow")
+points(all.these.stupid.stocks$risk[14], all.these.stupid.stocks$R[14], col = "orange", pch = 17)
+
+#Add the tangent (the following will draw the line only up to G):
+riskfree <- 0.001/365 # gotta make same frequency
+
+#Choose [10] because we actually saw the point and it looked most tangeant
+
+tanx <- all.these.stupid.stocks$risk[10]
+tany <- all.these.stupid.stocks$R[10]
+#segments(0,riskfree,op$risk,op$R)
+segments(0,riskfree,tanx,tany)
+
+
+text(standard.dev, e.r.data, stocksname, cex=0.6, pos=4, col="red")
+```
+
+
+(d)
+Based on MPT (Modern Portfolio Theory), compute the optimal weights (i.e., how much to invest in each stock), and identify your tangency portfolio.
+
+```{r}
+getSymbols("GE")
+getSymbols("SBUX")
+getSymbols("UNH")
+getSymbols("NVDA")
+getSymbols("ELLI")
+getSymbols("NFLX")
+getSymbols("AWK")
+getSymbols("GOOG")
+getSymbols("EW")
+getSymbols("COR")
+ge1 <- Ad(GE)['2016-01-05::2017-10-21']
+sbux1 <- Ad(SBUX)['2016-01-05::2017-10-21']
+unh1<- Ad(UNH)['2016-01-05::2017-10-21']
+nvda1 <- Ad(NVDA)['2016-01-05::2017-10-21']
+elli1 <- Ad(ELLI)['2016-01-05::2017-10-21']
+nflx1 <- Ad(NFLX)['2016-01-05::2017-10-21']
+awk1 <- Ad(AWK)['2016-01-05::2017-10-21']
+google1 <- Ad(GOOG)['2016-01-05::2017-10-21']
+ew1 <- Ad(EW)['2016-01-05::2017-10-21']
+cor1 <- Ad(COR)['2016-01-05::2017-10-21']
+newdata <- data.frame(ge1,sbux1,unh1,nvda1,elli1,nflx1,awk1,google1,ew1,cor1)
+newdata1 <- apply(newdata, 2, Delt)[-1,]
+port <- portfolio.optim(newdata1, rf = 0.01); port
+```
+
+As we can see from the results, the optimal weight for 10 stocks is as follows: 
+
+General Electric Company : 0.0536 \quad Starbucks: 0.03416
+\quad UnitedHealth Group:0.314 \quad Nvidia:0.06195
+\quad Elli:$\approx$ 0 (not legibile) \quad Netfelix:0
+\quad AmericanWaters:0.2914 \quad Google:0.1262
+\quad Edwards Lifesciences Corporation:0.0144\quad CoreSite Realty Corporation:0.1034
+
+
+
+
+
+
+
+
+
+
+
+

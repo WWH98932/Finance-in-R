@@ -1,0 +1,90 @@
+---
+output: pdf_document
+---
+2.  
+(a)  
+```{r}
+getwd()
+setwd("C:/Users/lenovo/Desktop")
+wages<-read.csv("wages.csv")
+#t test for bivariate
+t.test(wages$women,wages$men,alternative = "two.sided",conf.level = 0.95)
+```
+Comment: After t-test, the p-value=0.07928 > significant level=0.05, so we cannot reject Null Hypothesis, so that there is no significant difference of mean wages between women and men.   
+(b)  
+```{r}
+library(boot)
+women_wages<-c(wages$women)
+men_wages<-c(wages$men)
+# bootstrap
+bs <- function(data, indices) {
+d <- data[indices]
+return(mean(d)) 
+} 
+M_BSF<-boot(data=women_wages,statistic = bs,R=1000)
+M_BSM<-boot(data=men_wages,statistic = bs,R=1000)
+M_BS<-c(M_BSF,M_BSM)
+```
+
+(c)  
+```{r}
+# plot M_BSF 
+plot(M_BSF)
+```
+```{r}
+# plot M_BSM
+plot(M_BSM)
+```
+```{r}
+library(fitdistrplus)
+# fit distribution of women
+descdist(M_BSF$t[,1], boot = 1000)
+R_wage_boot_1<-(M_BSF$t[,1]-min(M_BSF$t[,1]))/(max(M_BSF$t[,1])-min(M_BSF$t[,1]))
+# fit beta distribution
+betafit_women <- fitdist(R_wage_boot_1, "beta", method = "mme")
+# fit gamma distribution
+gammafit_women <- fitdist(R_wage_boot_1, "gamma", method = "mme")
+# fit lnormal distribution
+normalfit_women <- fitdist(M_BSF$t[,1], "norm", method = "mme")
+# plot density
+denscomp(list(betafit_women, gammafit_women),ylim = c(0, 4),legendtext = c("beta", "gamma"))
+denscomp(normalfit_women,ylim = c(0, 0.001),legendtext = c("norm"))
+# fit distribution of men
+descdist(M_BSM$t[,1], boot = 1000)
+R_wage_boot_2<-(M_BSM$t[,1]-min(M_BSM$t[,1]))/(max(M_BSM$t[,1])-min(M_BSM$t[,1]))
+# fit beta distribution
+betafit_men <- fitdist(R_wage_boot_2, "beta", method = "mme")
+# fit gamma distribution
+gammafit_men <- fitdist(R_wage_boot_2, "gamma", method = "mme")
+# fit lnormal distribution
+normalfit_men <- fitdist(M_BSM$t[,1], "norm", method = "mme")
+# plot density
+denscomp(list(betafit_men, gammafit_men),ylim = c(0, 4),legendtext = c("beta", "gamma"))
+denscomp(normalfit_men,ylim = c(0, 0.001),legendtext = c("norm"))
+# ks.test
+ks.test(M_BSF$t[,1], M_BSM$t[,1])
+```
+Conclusion: So from the Cullen and Frey Graphs, we should choose normal distribution.  And we can see from the histograms, it shows evenly distribution. Therefore, we choose normal distribution.
+(d)  
+```{r}
+E_M_BSF<-M_BSF$t
+E_M_BSM<-M_BSM$t
+# calculate difference
+diff<-E_M_BSF-E_M_BSM
+Diff<-as.vector(diff)
+# plot histogram
+hist(Diff)
+library(tseries)
+# Jarque Bera Test
+jarque.bera.test(Diff)
+```
+
+Comment: Jarque-Bera Test tests whether the data are from normal distribution. After the test, we found the p-value is 0.9757. We cannot reject the null hypothesis, so that the data is from normal distribution.  
+(e)  
+```{r}
+# t-test
+t.test(E_M_BSF,E_M_BSM,alternative = "two.sided",conf.level = 0.95)
+```
+The p-value in t-tset is extremely small,So we could conclude that if we expand sample size to 1000, we should reject Null Hypothesis, and it shows that there is a difference of wages between  women and men.  
+(f)  
+General Conclusion: At first we set the sample size to 60, and find that there is no difference of wages between women and men. After we bootstrap the sample size to 1000, it shows the opposite result. Therefore, the sample size we choose at first is too small and unrepresentitive to interpret the fact. In the other statistical researches, we should choose large and representitive samples to fit the model and interpret them.  
